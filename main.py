@@ -2,6 +2,7 @@ import pandas as pd
 
 from merge_uploads import merge_uploads
 from use_sql_lite.Data_Base import Data_Base
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 def main(paths, name_db, new_base):
@@ -20,4 +21,7 @@ def main(paths, name_db, new_base):
     return
 
 
-main(["../uploads/Upload_3.csv", "../uploads/Upload_2.csv"], "grade.db", True)
+# main(["../uploads/Upload_3.csv", "../uploads/Upload_2.csv"], "grade.db", True)
+# db = Data_Base("grade.db")
+# hashed_password = generate_password_hash("710844Mira")
+# db.insert_user("miroslav.muratov", hashed_password)

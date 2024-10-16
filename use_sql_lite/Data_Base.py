@@ -20,6 +20,17 @@ class Data_Base:
         self.cursor.execute(sql_query)
         self.connection.commit()
 
+    # Добавить пользователя
+    def insert_user(self, username, hashed_password):
+        query = "INSERT INTO users (username, password) VALUES (?, ?)"
+        self.execute_query(query, (username, hashed_password))
+
+    # Получить пользователя по имени
+    def get_user(self, username):
+        query = "SELECT * FROM users WHERE username = ?"
+        self.cursor.execute(query, (username,))
+        return self.cursor.fetchone()
+
     def get_table(self, table_name, num):
         sql_query = f"SELECT * FROM {table_name}"
         self.cursor.execute(sql_query)
@@ -72,3 +83,32 @@ class Data_Base:
             unique_elements_dict[column] = df[column].unique().tolist()
 
         return unique_elements_dict
+
+    # Метод для создания таблицы пользователей
+    def create_users_table(self):
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        );
+        """
+        try:
+            self.cursor.execute(create_table_query)
+            self.connection.commit()
+            print("Таблица users успешно создана.")
+        except sqlite3.Error as e:
+            print(f"Ошибка при создании таблицы: {e}")
+
+    # Метод для выполнения SQL-запросов (INSERT, UPDATE, DELETE)
+    def execute_query(self, query, params=None):
+        try:
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f"Ошибка выполнения запроса: {e}")
+            return False
+        return True
