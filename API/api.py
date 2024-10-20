@@ -1,15 +1,18 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, request, send_file
 from flask_restful import Api, Resource, reqparse
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
 from functools import wraps
-from use_sql_lite.Data_Base import Data_Base
+import json
+
+from GraidAis_Back.use_sql_lite.Data_Base import Data_Base
+
+# from use_sql_lite.Data_Base import Data_Base
 
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = 'your_secret_key'
-
 
 # Helper function to generate JWT
 def generate_token(username):
@@ -26,18 +29,17 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization')
         if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
+            return json.dumps({'message': 'Token is missing!'}, indent = 4), 401
         try:
             token = token.split()[1]
             jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
         except:
-            return jsonify({'message': 'Token is invalid!'}), 401
+            print(token)
+            return json.dumps({'message': 'Token is invalid!'}, indent = 4), 401
         return f(*args, **kwargs)
 
     return decorated
 
-
-# Регистрация пользователя
 class Register(Resource):
     db_name = "../use_sql_lite/grade.db"
 
@@ -50,13 +52,12 @@ class Register(Resource):
         hashed_password = generate_password_hash(password)
 
         try:
-            db.insert_user(username, hashed_password)  # Вставить пользователя в базу данных
-            return jsonify({"message": "User registered successfully!"}), 201
+            db.insert_user(username, hashed_password)
+            return json.dumps({"message": "User registered successfully!"}, indent = 4), 201
         except Exception as e:
-            return jsonify({"message": f"User registration failed: {str(e)}"}), 400
+            return json.dumps({"message": f"User registration failed: {str(e)}"}, indent = 4), 400
 
 
-# Авторизация пользователя
 class Login(Resource):
     db_name = "../use_sql_lite/grade.db"
 
@@ -67,18 +68,17 @@ class Login(Resource):
         db = Data_Base(self.db_name)
         user = db.get_user(username)
 
+        # Проверяем пароль
         if user and check_password_hash(user[2], password):
             token = generate_token(username)
-            return jsonify({"token": token})
+            return json.dumps({"token": token}, indent = 4), 200
         else:
-            return jsonify({"message": "Invalid credentials!"})
+            return json.dumps({"message": "Invalid credentials!"}, indent = 4), 400
 
-
-# Пример защищенного ресурса
 class ProtectedResource(Resource):
     @token_required
     def get(self):
-        return jsonify({"message": "This is a protected resource!"})
+        return json.dumps({"message": "This is a protected resource!"}, indent = 4), 200
 
 
 class Grade_table(Resource):
@@ -88,7 +88,7 @@ class Grade_table(Resource):
         db = Data_Base(self.db_name)
         table = db.get_table(table_name, number)
         table = table.to_dict()
-        return jsonify(table)
+        return json.dumps(table, indent = 4)
 
 
 class Grade_colums_name(Resource):
@@ -97,7 +97,7 @@ class Grade_colums_name(Resource):
     def get(self, table_name):
         db = Data_Base(self.db_name)
         colums = db.get_list_table_colums(table_name)
-        return jsonify(colums)
+        return json.dumps(colums, indent = 4), 200
 
 
 class ReceiveJson(Resource):
@@ -139,7 +139,7 @@ class get_unique_elements_in_colums(Resource):
     def get(self, table_name):
         db = Data_Base(self.db_name)
         unique_elements = db.get_unique_elements(table_name)
-        return unique_elements
+        return unique_elements, 200
 
 
 api.add_resource(Register, "/register")
