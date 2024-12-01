@@ -1,18 +1,24 @@
-from flask import Flask, request, send_file
-from flask_restful import Api, Resource, reqparse
+import os
+from flask import Flask, request, send_file, after_this_request
+
+from flask_restful import Api, Resource
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
 from functools import wraps
 import json
 
-from GraidAis_Back.use_sql_lite.Data_Base import Data_Base
-
-# from use_sql_lite.Data_Base import Data_Base
+from GraidAis_Back.merge_uploads import update_db
+from GraidAis_Back.Data_base.Data_Base import Data_Base
 
 app = Flask(__name__)
 api = Api(app)
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = '14312412i4rg8ogso8vsdvcs82rkl2rsd'
+
+UPLOAD_FOLDER = '../uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+db_name = "../grade.db"
 
 # Helper function to generate JWT
 def generate_token(username):
@@ -23,7 +29,6 @@ def generate_token(username):
     return token
 
 
-# Decorator to require token for protected routes
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -41,7 +46,7 @@ def token_required(f):
     return decorated
 
 class Register(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
 
     def post(self):
         data = request.get_json()
@@ -59,7 +64,7 @@ class Register(Resource):
 
 
 class Login(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
 
     def post(self):
         data = request.get_json()
@@ -68,7 +73,6 @@ class Login(Resource):
         db = Data_Base(self.db_name)
         user = db.get_user(username)
 
-        # Проверяем пароль
         if user and check_password_hash(user[2], password):
             token = generate_token(username)
             return json.dumps({"token": token}, indent = 4), 200
@@ -82,7 +86,7 @@ class ProtectedResource(Resource):
 
 
 class Grade_table(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
 
     def get(self, table_name, number):
         db = Data_Base(self.db_name)
@@ -92,7 +96,7 @@ class Grade_table(Resource):
 
 
 class Grade_colums_name(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
 
     def get(self, table_name):
         db = Data_Base(self.db_name)
@@ -100,14 +104,16 @@ class Grade_colums_name(Resource):
         return json.dumps(colums, indent = 4), 200
 
 
-class ReceiveJson(Resource):
-    db_name = "../use_sql_lite/grade.db"
+class Filter(Resource):
+    db_name = db_name
 
     def post(self, table_name):
         all_filters = request.get_json()
-
+        all_filters = all_filters.get('allFilters', {})
         db = Data_Base(self.db_name)
         search_table = db.keyword_search(table_name, all_filters)
+        if "Поиск" in all_filters.keys():
+            search_table = db.full_text_search(search_table, all_filters["Поиск"])
         search_table = search_table.to_dict()
         response = {
             "status": "success",
@@ -118,36 +124,78 @@ class ReceiveJson(Resource):
 
 
 class send_excel_file(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
     download_folder = './downloads'
 
     def post(self, table_name):
         all_filters = request.get_json()
-
+        all_filters = all_filters.get('allFilters', {})
         db = Data_Base(self.db_name)
         search_table = db.keyword_search(table_name, all_filters)
+        if "Поиск" in all_filters.keys():
+            search_table = db.full_text_search(search_table, all_filters["Поиск"])
 
         excel_filename = './output.xlsx'
         search_table.to_excel(excel_filename, index=False)
+
+        @after_this_request
+        def remove_file(response):
+            try:
+                os.remove(excel_filename)
+            except Exception as e:
+                print(f"Error removing file: {e}")
+            return response
 
         return send_file(excel_filename, as_attachment=True)
 
 
 class get_unique_elements_in_colums(Resource):
-    db_name = "../use_sql_lite/grade.db"
+    db_name = db_name
 
     def get(self, table_name):
         db = Data_Base(self.db_name)
         unique_elements = db.get_unique_elements(table_name)
         return unique_elements, 200
 
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
+
+class update_refresh_db(Resource):
+    def post(self):
+        if 'files' not in request.files:
+            return {"error": "Нет файлов в запросе"}, 400
+
+        files = request.files.getlist('files')
+        saved_files = []
+        update_mode = eval(request.form.get('updateMode', None))
+        file_names = []
+        for file in files:
+            if file.filename == '':
+                return {"error": "Один из файлов не имеет имени"}, 400
+
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            try:
+                file.save(file_path)
+                saved_files.append(file_path)
+                file_names.append(filename)
+            except Exception as e:
+                return {"error": f"Ошибка при сохранении файла {filename}: {str(e)}"}, 500
+        update_db(file_names, update_mode)
+        for file in saved_files:
+            os.remove(file)
+
+        return {"message": "База данных успешно обновлена"}, 200
+
+api.add_resource(update_refresh_db, "/upload_files")
 api.add_resource(Register, "/register")
 api.add_resource(Login, "/login")
 api.add_resource(ProtectedResource, "/protected")
 api.add_resource(Grade_table, "/get_table/<table_name>/<int:number>")
 api.add_resource(Grade_colums_name, "/get_colum/<table_name>")
-api.add_resource(ReceiveJson, "/receive_json/<table_name>")
+api.add_resource(Filter, "/receive_json/<table_name>")
 api.add_resource(send_excel_file, "/send_excel/<table_name>")
 api.add_resource(get_unique_elements_in_colums, "/get_unique_elementss/<table_name>")
 
