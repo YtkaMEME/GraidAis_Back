@@ -189,15 +189,15 @@ class update_refresh_db(Resource):
 
         return {"message": "База данных успешно обновлена"}, 200
 
-api.add_resource(update_refresh_db, "/upload_files")
-api.add_resource(Register, "/register")
-api.add_resource(Login, "/login")
-api.add_resource(ProtectedResource, "/protected")
-api.add_resource(Grade_table, "/get_table/<table_name>/<int:number>")
-api.add_resource(Grade_colums_name, "/get_colum/<table_name>")
-api.add_resource(Filter, "/receive_json/<table_name>")
-api.add_resource(send_excel_file, "/send_excel/<table_name>")
-api.add_resource(get_unique_elements_in_colums, "/get_unique_elementss/<table_name>")
+api.add_resource(update_refresh_db, "/api/upload_files")
+api.add_resource(Register, "/api/register")
+api.add_resource(Login, "/api/login")
+api.add_resource(ProtectedResource, "/api/protected")
+api.add_resource(Grade_table, "/api/get_table/<table_name>/<int:number>")
+api.add_resource(Grade_colums_name, "/api/get_colum/<table_name>")
+api.add_resource(Filter, "/api/receive_json/<table_name>")
+api.add_resource(send_excel_file, "/api/send_excel/<table_name>")
+api.add_resource(get_unique_elements_in_colums, "/api/get_unique_elementss/<table_name>")
 
 if __name__ == '__main__':
     app.run(debug=True)
