@@ -15,21 +15,12 @@ class MainState(StatesGroup):
     add_users_list = State()
     put_away_users_list = State()
 
-def load_allowed_users():
-    with open('allowed_users.json', 'r') as file:
-        data = json.load(file)
-        return data.get("allowed_users", [])
-
-allowed_users = load_allowed_users()
-
-API_TOKEN = ''
+API_TOKEN = '7311030425:AAGyP65G-nwCbBSjYNHCuxSnvvY-SKeT_Rw'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 router = Router()
 
-def is_allowed(user_id):
-    return user_id in allowed_users
 
 @dp.message(Command("get_id"))
 async def get_id(message: Message):
@@ -83,20 +74,25 @@ async def add_put_users_list(message: Message, state: FSMContext):
     user_password = message.text.split(" ")[1]
 
     db = Data_Base("../grade.db")
+    current_state = await state.get_state()
 
-    # current_state = await state.get_state()
-    # if current_state == MainState.put_away_users_list:
-    #     if user_id in user_list:
-    #         user_list.remove(user_id)
-    # elif current_state == MainState.add_users_list:
-    #     user_list.append(user_id)
+    if current_state == MainState.put_away_users_list:
+        user = db.get_user(user_login)
 
-    hashed_password = generate_password_hash(user_password)
+        if user:
+            db.delete_user(user_login)
+            await message.answer(f"Пользователь {user_login} был удален.")
+        else:
+            await message.answer(f"Пользователь {user_login} не найден в базе данных.")
 
-    db.insert_user(user_login, hashed_password)
-
-    await message.answer(f"Пользователь добавлен и теперь имеет доступ к сайту")
-
+    elif current_state == MainState.add_users_list:
+        user = db.get_user(user_login)
+        if user:
+            await message.answer(f"Пользователь {user_login} уже существует.")
+        else:
+            hashed_password = generate_password_hash(user_password)
+            db.insert_user(user_login, hashed_password)
+            await message.answer(f"Пользователь {user_login} добавлен и теперь имеет доступ к сайту.")
     await state.clear()
 
 async def main():

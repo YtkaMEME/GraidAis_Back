@@ -25,7 +25,6 @@ class Data_Base:
         self.cursor.execute(sql_query)
         self.connection.commit()
 
-    # Добавить пользователя
     def insert_user(self, username, hashed_password):
         query = "INSERT INTO users (username, password) VALUES (?, ?)"
         self.execute_query(query, (username, hashed_password))
@@ -35,6 +34,11 @@ class Data_Base:
         query = "SELECT * FROM users WHERE username = ?"
         self.cursor.execute(query, (username,))
         return self.cursor.fetchone()
+
+    def delete_user(self, username):
+        query = "DELETE FROM users WHERE username = ?"
+        self.cursor.execute(query, (username,))
+        self.connection.commit()
 
     def get_table(self, table_name, num = 0):
         sql_query = f"SELECT * FROM {table_name}"
