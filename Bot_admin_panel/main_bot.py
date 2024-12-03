@@ -5,6 +5,8 @@ from aiogram.filters import Command
 from aiogram import Router
 from werkzeug.security import generate_password_hash, check_password_hash
 from aiogram.fsm.state import State, StatesGroup
+
+from GraidAis_Back.Bot_admin_panel.Token import API_TOKEN
 from GraidAis_Back.Data_base.Data_Base import Data_Base
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove, KeyboardButton, ReplyKeyboardMarkup
@@ -14,8 +16,6 @@ class MainState(StatesGroup):
     change_users_list = State()
     add_users_list = State()
     put_away_users_list = State()
-
-API_TOKEN = '7311030425:AAGyP65G-nwCbBSjYNHCuxSnvvY-SKeT_Rw'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
