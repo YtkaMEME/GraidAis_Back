@@ -1,5 +1,6 @@
 import os
 from flask import Flask, request, send_file, after_this_request
+import zipfile
 
 from flask_restful import Api, Resource
 from werkzeug.utils import secure_filename
@@ -168,24 +169,67 @@ class update_refresh_db(Resource):
 
         files = request.files.getlist('files')
         saved_files = []
-        update_mode = eval(request.form.get('updateMode', None))
         file_names = []
-        for file in files:
-            if file.filename == '':
-                return {"error": "Один из файлов не имеет имени"}, 400
+        update_mode = eval(request.form.get('updateMode', None))
 
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        unzip_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'unzipped')
+        os.makedirs(unzip_folder, exist_ok=True)
 
-            try:
+        try:
+            for file in files:
+                if file.filename == '':
+                    return {"error": "Один из файлов не имеет имени"}, 400
+
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
                 file.save(file_path)
-                saved_files.append(file_path)
-                file_names.append(filename)
-            except Exception as e:
-                return {"error": f"Ошибка при сохранении файла {filename}: {str(e)}"}, 500
-        update_db(file_names, update_mode)
-        for file in saved_files:
-            os.remove(file)
+
+                if filename.endswith('.zip'):
+                    try:
+                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                            bad_file = zip_ref.testzip()
+                            if bad_file:
+                                return {"error": f"Архив {filename} повреждён, ошибка в файле {bad_file}"}, 400
+
+                            for member in zip_ref.infolist():
+                                if member.filename.startswith('__MACOSX') or member.filename.endswith('.DS_Store'):
+                                    continue
+
+                                zip_ref.extract(member, unzip_folder)
+
+                        for root, dirs, extracted_files in os.walk(unzip_folder):
+                            for extracted_file in extracted_files:
+                                extracted_file_path = os.path.join(root, extracted_file)
+
+                                if extracted_file.lower().endswith('.csv') or extracted_file.lower().endswith('.xlsx'):
+                                    file_names.append(extracted_file_path)
+                                    saved_files.append(extracted_file_path)
+                                else:
+                                    return {"error": f"Неподдерживаемый тип файла: {extracted_file}"}, 400
+
+                    except zipfile.BadZipFile:
+                        return {"error": f"Файл {filename} не является допустимым ZIP архивом"}, 400
+                    except Exception as e:
+                        return {"error": f"Ошибка при разархивировании {filename}: {str(e)}"}, 500
+                    finally:
+                        os.remove(file_path)
+
+                else:
+                    file_names.append(file_path)
+                    saved_files.append(file_path)
+
+            update_db(file_names, update_mode)
+
+        except Exception as e:
+            return {"error": f"Ошибка: {str(e)}"}, 500
+
+        finally:
+            for file in saved_files:
+                os.remove(file)
+            for root, dirs, files in os.walk(unzip_folder):
+                for file in files:
+                    os.remove(os.path.join(root, file))
 
         return {"message": "База данных успешно обновлена"}, 200
 

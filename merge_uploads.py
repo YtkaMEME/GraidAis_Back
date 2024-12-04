@@ -4,7 +4,7 @@ from GraidAis_Back.Data_base.Data_Base import Data_Base
 
 def merge_uploads_def(file_names, old_db_table=None):
     dataframes = []
-    start_path = "../uploads/"
+    start_path = "./uploads/"
 
     if old_db_table is not None and not old_db_table.empty:
         dataframes.append(old_db_table)
@@ -36,7 +36,7 @@ def merge_uploads_def(file_names, old_db_table=None):
 
 
 def update_db(paths, new_base):
-    name_db = "../grade.db"
+    name_db = "./grade.db"
     db = Data_Base(name_db)
     try:
         if new_base:
@@ -51,3 +51,7 @@ def update_db(paths, new_base):
         print(f"Ошибка при обновлении базы данных: {str(e)}", flush=True)
         return {"error": f"Ошибка при обновлении базы данных"}
     return
+
+
+
+
