@@ -244,4 +244,4 @@ api.add_resource(send_excel_file, "/api/send_excel/<table_name>")
 api.add_resource(get_unique_elements_in_colums, "/api/get_unique_elementss/<table_name>")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5003)
