@@ -224,12 +224,26 @@ class update_refresh_db(Resource):
         except Exception as e:
             return {"error": f"Ошибка: {str(e)}"}, 500
 
-        finally:
-            for file in saved_files:
-                os.remove(file)
-            for root, dirs, files in os.walk(unzip_folder):
-                for file in files:
-                    os.remove(os.path.join(root, file))
+        @after_this_request
+        def remove_files(response):
+
+            try:
+
+                for file in saved_files:
+
+                    if os.path.exists(file):
+                        os.remove(file)
+
+                for root, dirs, files in os.walk(unzip_folder):
+
+                    for file in files:
+                        os.remove(os.path.join(root, file))
+
+            except Exception as e:
+
+                print(f"Error removing file: {e}")
+
+            return response
 
         return {"message": "База данных успешно обновлена"}, 200
 

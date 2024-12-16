@@ -99,6 +99,6 @@ async def main():
     dp.include_router(router)
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)  # Измените порт на 5001
+if __name__ == '__main__':
+    asyncio.run(main())
 
