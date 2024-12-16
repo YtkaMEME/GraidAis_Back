@@ -29,7 +29,6 @@ class Data_Base:
         query = "INSERT INTO users (username, password) VALUES (?, ?)"
         self.execute_query(query, (username, hashed_password))
 
-    # Получить пользователя по имени
     def get_user(self, username):
         query = "SELECT * FROM users WHERE username = ?"
         self.cursor.execute(query, (username,))
@@ -97,7 +96,6 @@ class Data_Base:
 
         return unique_elements_dict
 
-    # Метод для создания таблицы пользователей
     def create_users_table(self):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS users (

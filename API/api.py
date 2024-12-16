@@ -21,7 +21,9 @@ UPLOAD_FOLDER = '../uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 db_name = "../grade.db"
 
-# Helper function to generate JWT
+db = Data_Base(db_name)
+db.create_users_table()
+
 def generate_token(username):
     token = jwt.encode({
         'user': username,
