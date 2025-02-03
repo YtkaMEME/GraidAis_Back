@@ -117,6 +117,8 @@ class Filter(Requests):
         }
         return response, 200
 
+import tempfile
+
 class SendExcelFile(Requests):
 
     def post(self, table_name):
@@ -134,8 +136,9 @@ class SendExcelFile(Requests):
         if "Поиск" in all_filters.keys():
             search_table = db.full_text_search(search_table, all_filters["Поиск"])
 
-        excel_filename = './output.xlsx'
-        search_table.to_excel(excel_filename, index=False)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            search_table.to_excel(tmp.name, index=False)
+            excel_filename = tmp.name
 
         @after_this_request
         def remove_file(response):
@@ -145,7 +148,8 @@ class SendExcelFile(Requests):
                 print(f"Error removing file: {e}")
             return response
 
-        return send_file(excel_filename, as_attachment=True)
+        return send_file(excel_filename, as_attachment=True, add_etags=False)
+
 
 class GetUniqueElementsInColums(Requests):
 

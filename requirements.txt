@@ -2,6 +2,5 @@ aiogram==3.17.0
 Flask==3.1.0
 Flask_RESTful==0.3.10
 pandas==2.2.3
-PyJWT==2.9.0
 PyJWT==2.10.1
 Werkzeug==3.1.3
