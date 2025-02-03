@@ -6,11 +6,13 @@ from aiogram import Router
 from werkzeug.security import generate_password_hash, check_password_hash
 from aiogram.fsm.state import State, StatesGroup
 
-from GraidAis_Back.Bot_admin_panel.Token import API_TOKEN
-from GraidAis_Back.Data_base.Data_Base import Data_Base
+from GraidAis_Back.Data_base.DataBase import DataBase
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove, KeyboardButton, ReplyKeyboardMarkup
 from aiogram import F
+
+from GraidAis_Back.config import API_TOKEN
+
 
 class MainState(StatesGroup):
     change_users_list = State()
@@ -73,7 +75,7 @@ async def add_put_users_list(message: Message, state: FSMContext):
     user_login = message.text.split(" ")[0]
     user_password = message.text.split(" ")[1]
 
-    db = Data_Base("../grade.db")
+    db = DataBase("../grade.db")
     current_state = await state.get_state()
 
     if current_state == MainState.put_away_users_list:

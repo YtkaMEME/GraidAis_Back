@@ -203,7 +203,7 @@ poetry.toml
 # ruff
 .ruff_cache/
 
-# LSP config files
+# LSP config.py files
 pyrightconfig.json
 
 ### VisualStudio ###
@@ -409,7 +409,7 @@ PublishScripts/
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
-#!**/[Pp]ackages/repositories.config
+#!**/[Pp]ackages/repositories.config.py
 # NuGet v3's project.json files produces more ignorable files
 *.nuget.props
 *.nuget.targets
@@ -534,7 +534,7 @@ paket-files/
 
 # Cake - Uncomment if you are using it
 # tools/**
-# !tools/packages.config
+# !tools/packages.config.py
 
 # Tabs Studio
 *.tss
@@ -607,3 +607,4 @@ FodyWeavers.xsd
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,visualstudio
 grade.db
+config.py

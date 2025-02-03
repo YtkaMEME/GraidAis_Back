@@ -10,19 +10,21 @@ import datetime
 from functools import wraps
 import json
 
-from GraidAis_Back.merge_uploads import update_db
-from GraidAis_Back.Data_base.Data_Base import Data_Base
+from GraidAis_Back.config import SECRET_KEY, DB_NAME
+from GraidAis_Back.API.merge_uploads import update_db
+from GraidAis_Back.Data_base.DataBase import DataBase
 
 app = Flask(__name__)
 api = Api(app)
-app.config['SECRET_KEY'] = '14312412i4rg8ogso8vsdvcs82rkl2rsd'
+app.config['SECRET_KEY'] = SECRET_KEY
 
-UPLOAD_FOLDER = '../uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-db_name = "../grade.db"
+upload_folder = '../uploads'
+app.config['UPLOAD_FOLDER'] = upload_folder
 
-db = Data_Base(db_name)
-db.create_users_table()
+class Requests(Resource):
+    db_name = DB_NAME
+    download_folder = './downloads'
+
 
 def generate_token(username):
     token = jwt.encode({
@@ -30,7 +32,6 @@ def generate_token(username):
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }, app.config['SECRET_KEY'], algorithm="HS256")
     return token
-
 
 def token_required(f):
     @wraps(f)
@@ -42,21 +43,19 @@ def token_required(f):
             token = token.split()[1]
             jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
         except:
-            print(token)
             return json.dumps({'message': 'Token is invalid!'}, indent = 4), 401
         return f(*args, **kwargs)
 
     return decorated
 
-class Register(Resource):
-    db_name = db_name
+class Register(Requests):
 
     def post(self):
         data = request.get_json()
         username = data['username']
         password = data['password']
 
-        db = Data_Base(self.db_name)
+        db = DataBase(self.db_name)
         hashed_password = generate_password_hash(password)
 
         try:
@@ -65,15 +64,13 @@ class Register(Resource):
         except Exception as e:
             return json.dumps({"message": f"User registration failed: {str(e)}"}, indent = 4), 400
 
-
-class Login(Resource):
-    db_name = db_name
+class Login(Requests):
 
     def post(self):
         data = request.get_json()
         username = data['username']
         password = data['password']
-        db = Data_Base(self.db_name)
+        db = DataBase(self.db_name)
         user = db.get_user(username)
 
         if user and check_password_hash(user[2], password):
@@ -82,41 +79,36 @@ class Login(Resource):
         else:
             return json.dumps({"message": "Invalid credentials!"}, indent = 4), 400
 
-class ProtectedResource(Resource):
+class ProtectedResource(Requests):
     @token_required
     def get(self):
         return json.dumps({"message": "This is a protected resource!"}, indent = 4), 200
 
-
-class Grade_table(Resource):
-    db_name = db_name
+class GradeTable(Requests):
 
     def get(self, table_name, number):
-        db = Data_Base(self.db_name)
+        db = DataBase(self.db_name)
         table = db.get_table(table_name, number)
         table = table.to_dict()
         return json.dumps(table, indent = 4)
 
-
-class Grade_colums_name(Resource):
-    db_name = db_name
+class GradeColumsName(Requests):
 
     def get(self, table_name):
-        db = Data_Base(self.db_name)
+        db = DataBase(self.db_name)
         colums = db.get_list_table_colums(table_name)
         return json.dumps(colums, indent = 4), 200
 
+class Filter(Requests):
 
-class Filter(Resource):
-    db_name = db_name
-
-    def post(self, table_name):
+    def post(self, table_name, number):
         all_filters = request.get_json()
         all_filters = all_filters.get('allFilters', {})
-        db = Data_Base(self.db_name)
-        search_table = db.keyword_search(table_name, all_filters)
+        db = DataBase(self.db_name)
+        search_table = db.filers(table_name, all_filters)
         if "Поиск" in all_filters.keys():
             search_table = db.full_text_search(search_table, all_filters["Поиск"])
+        search_table = search_table.head(100)
         search_table = search_table.to_dict()
         response = {
             "status": "success",
@@ -125,16 +117,20 @@ class Filter(Resource):
         }
         return response, 200
 
-
-class send_excel_file(Resource):
-    db_name = db_name
-    download_folder = './downloads'
+class SendExcelFile(Requests):
 
     def post(self, table_name):
-        all_filters = request.get_json()
-        all_filters = all_filters.get('allFilters', {})
-        db = Data_Base(self.db_name)
-        search_table = db.keyword_search(table_name, all_filters)
+        full_request = request.get_json()
+        all_filters = full_request.get('allFilters', {})
+        all_samples = full_request.get('selectedCheckboxes', {})
+
+        db = DataBase(self.db_name)
+
+        search_table = db.filers(table_name, all_filters)
+
+        selected_columns = [column for column, is_selected in all_samples.items() if is_selected]
+        search_table = search_table[selected_columns]
+
         if "Поиск" in all_filters.keys():
             search_table = db.full_text_search(search_table, all_filters["Поиск"])
 
@@ -151,21 +147,21 @@ class send_excel_file(Resource):
 
         return send_file(excel_filename, as_attachment=True)
 
+class GetUniqueElementsInColums(Requests):
 
-class get_unique_elements_in_colums(Resource):
-    db_name = db_name
-
-    def get(self, table_name):
-        db = Data_Base(self.db_name)
-        unique_elements = db.get_unique_elements(table_name)
+    def post(self, table_name):
+        full_request = request.get_json()
+        colums = full_request.get('columsDrop', [])
+        db = DataBase(self.db_name)
+        unique_elements = db.get_unique_elements(table_name, colums)
         return unique_elements, 200
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-
-class update_refresh_db(Resource):
+class UpdateRefreshDb(Requests):
     def post(self):
+
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+
         if 'files' not in request.files:
             return {"error": "Нет файлов в запросе"}, 400
 
@@ -221,7 +217,7 @@ class update_refresh_db(Resource):
                     file_names.append(file_path)
                     saved_files.append(file_path)
 
-            update_db(file_names, update_mode)
+            update_db(file_names, update_mode, self.db_name)
 
         except Exception as e:
             return {"error": f"Ошибка: {str(e)}"}, 500
@@ -249,15 +245,15 @@ class update_refresh_db(Resource):
 
         return {"message": "База данных успешно обновлена"}, 200
 
-api.add_resource(update_refresh_db, "/api/upload_files")
+api.add_resource(UpdateRefreshDb, "/api/upload_files")
 api.add_resource(Register, "/api/register")
 api.add_resource(Login, "/api/login")
 api.add_resource(ProtectedResource, "/api/protected")
-api.add_resource(Grade_table, "/api/get_table/<table_name>/<int:number>")
-api.add_resource(Grade_colums_name, "/api/get_colum/<table_name>")
-api.add_resource(Filter, "/api/receive_json/<table_name>")
-api.add_resource(send_excel_file, "/api/send_excel/<table_name>")
-api.add_resource(get_unique_elements_in_colums, "/api/get_unique_elementss/<table_name>")
+api.add_resource(GradeTable, "/api/get_table/<table_name>/<int:number>")
+api.add_resource(GradeColumsName, "/api/get_colum/<table_name>")
+api.add_resource(Filter, "/api/receive_json/<table_name>/<int:number>")
+api.add_resource(SendExcelFile, "/api/send_excel/<table_name>")
+api.add_resource(GetUniqueElementsInColums, "/api/get_unique_elements/<table_name>")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
