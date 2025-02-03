@@ -134,16 +134,16 @@ class SendExcelFile(Requests):
         if "Поиск" in all_filters.keys():
             search_table = db.full_text_search(search_table, all_filters["Поиск"])
 
-        excel_filename = './output.xlsx'
+        excel_filename = '/GraidAis_Back/output.xlsx'
         search_table.to_excel(excel_filename, index=False)
 
-        # @after_this_request
-        # def remove_file(response):
-        #     try:
-        #         os.remove(excel_filename)
-        #     except Exception as e:
-        #         print(f"Error removing file: {e}")
-        #     return response
+        @after_this_request
+        def remove_file(response):
+            try:
+                os.remove(excel_filename)
+            except Exception as e:
+                print(f"Error removing file: {e}")
+            return response
 
         return send_file(excel_filename, as_attachment=True)
 
