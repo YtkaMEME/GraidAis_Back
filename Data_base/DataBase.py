@@ -93,22 +93,26 @@ class DataBase:
                 conditions = []
                 for k, v in combination:
                     if k == 'ВозрастMIN':
-                        # Фильтрация по возрастному диапазону
                         age_min = v
                         age_max = all_filters.get('ВозрастMAX', None)
                         if age_max:
                             conditions.append(f"[Возраст] BETWEEN {age_min} AND {age_max}")
                     elif k == 'ВозрастMAX':
-                        # Пропускаем 'ВозрастMAX', он уже обработан выше
+                        continue
+                    elif k == 'DATESTART':
+                        date_start = v
+                        date_end = all_filters.get('DATEEND', None)
+                        if date_end:
+                            conditions.append(f"[Последнее обновление] BETWEEN '{date_start}' AND '{date_end}'")
+                        else:
+                            conditions.append(f"[Последнее обновление] >= '{date_start}'")
+                    elif k == 'DATEEND':
                         continue
                     else:
-                        # Для остальных фильтров
                         parsed_values = parse_filter_value(v)
                         if len(parsed_values) > 1:
-                            # Если несколько значений, используем IN
                             conditions.append(f"[{k}] IN ({','.join([repr(val) for val in parsed_values])})")
                         else:
-                            # Если одно значение, обычное равенство
                             conditions.append(f"[{k}]='{parsed_values[0]}'")
 
                 if conditions:
@@ -123,7 +127,7 @@ class DataBase:
                         df = df.fillna(" ")
                         return df
 
-        return self.get_table(table_name, 100)
+        return self.get_table(table_name)
 
     def get_unique_elements(self, table_name, columns):
 
