@@ -1,5 +1,6 @@
 import json
 import asyncio
+import subprocess
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram import Router
@@ -28,6 +29,7 @@ router = Router()
 async def get_id(message: Message):
     user_id = message.from_user.id
     await message.answer(f"Ваш ID: {user_id}")
+
 
 @router.message(Command("register_user"))
 async def admin_panel(message: Message, state: FSMContext):
@@ -63,10 +65,10 @@ async def admin_panel(message: Message, state: FSMContext):
 async def users_list(message: Message, state: FSMContext):
     if message.text == "Удалить":
         await state.set_state(MainState.put_away_users_list)
-        await message.answer("Отправьте login пользователя которого необходимо удалить", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Отправьте login пользователя, которого необходимо удалить", reply_markup=ReplyKeyboardRemove())
     elif message.text == "Добавить":
         await state.set_state(MainState.add_users_list)
-        await message.answer("Отправьте login и пароль пользователя которого необходимо добавить", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Отправьте login и пароль пользователя, которого необходимо добавить", reply_markup=ReplyKeyboardRemove())
 
 
 @router.message(MainState.put_away_users_list)
@@ -97,10 +99,46 @@ async def add_put_users_list(message: Message, state: FSMContext):
             await message.answer(f"Пользователь {user_login} добавлен и теперь имеет доступ к сайту.")
     await state.clear()
 
+async def run_git_pull():
+    try:
+        process = await asyncio.create_subprocess_shell(
+            "/bin/bash /updating_repository.sh",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            return stdout.decode('utf-8')
+        else:
+            return f"Ошибка выполнения: {stderr.decode('utf-8')}"
+    except Exception as e:
+        return f"Ошибка: {str(e)}"
+
+
+# Команда для запуска SSH-скрипта через Telegram
+@dp.message(Command("git_pull"))
+async def git_pull_command(message: Message):
+    user_id = message.from_user.id
+    with open('admins.json', 'r', encoding='utf-8') as file:
+        admins_users = json.load(file)
+
+    if user_id not in admins_users:
+        await message.answer("У вас нет прав для выполнения этой команды.")
+        return
+
+    # Запускаем SSH-скрипт
+    await message.answer("Запускаю git pull...")
+    result = await run_git_pull()
+
+    # Отправляем результат пользователю
+    await message.answer(result)
+
+
 async def main():
     dp.include_router(router)
     await dp.start_polling(bot)
 
+
 if __name__ == '__main__':
     asyncio.run(main())
-
