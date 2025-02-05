@@ -245,6 +245,14 @@ class UpdateRefreshDb(Requests):
 
         return {"message": "База данных успешно обновлена"}, 200
 
+
+class GetLastUpdateDate(Requests):
+
+    def get(self):
+        db = DataBase(self.db_name)
+        return db.get_latest_update_date()
+
+
 api.add_resource(UpdateRefreshDb, "/api/upload_files")
 api.add_resource(Register, "/api/register")
 api.add_resource(Login, "/api/login")
@@ -254,6 +262,7 @@ api.add_resource(GradeColumsName, "/api/get_colum/<table_name>")
 api.add_resource(Filter, "/api/receive_json/<table_name>/<int:number>")
 api.add_resource(SendExcelFile, "/api/send_excel/<table_name>")
 api.add_resource(GetUniqueElementsInColums, "/api/get_unique_elements/<table_name>")
+api.add_resource(GetLastUpdateDate, "/api/get_last_update")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5003)

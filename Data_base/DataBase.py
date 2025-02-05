@@ -200,3 +200,14 @@ class DataBase:
             print(f"Ошибка выполнения запроса: {e}")
             return False
         return True
+
+    def get_latest_update_date(self) -> str:
+        cursor = self.cursor
+
+        cursor.execute("SELECT MAX([Последнее обновление]) FROM people")
+
+        latest_date = cursor.fetchone()[0]
+
+        self.close()
+
+        return latest_date
