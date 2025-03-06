@@ -47,7 +47,7 @@ class DataBase:
         self.cursor.execute(query, (username,))
         self.connection.commit()
 
-    def get_table(self, table_name, num = 0):
+    def get_table(self, table_name):
 
         if not self.check_table(table_name):
             return pd.DataFrame()
@@ -58,10 +58,18 @@ class DataBase:
         column_names = [description[0] for description in self.cursor.description]
         df = pd.DataFrame(table, columns=column_names)
         df = df.fillna(" ")
-        if num == 0:
-            return df
-        else:
-            return df.head(num)
+        return df
+
+    def get_limit_table(self, table_name, num):
+        if not self.check_table(table_name):
+            return pd.DataFrame()
+        sql_query = f"SELECT * FROM {table_name} LIMIT {num}" if num > 0 else f"SELECT * FROM {table_name}"
+        self.cursor.execute(sql_query)
+        table = self.cursor.fetchall()
+        column_names = [description[0] for description in self.cursor.description]
+        df = pd.DataFrame(table, columns=column_names)
+        df = df.fillna(" ")
+        return df
 
     def get_list_table_colums(self, table_name):
         sql_query = f"PRAGMA table_info({table_name})"
@@ -130,23 +138,20 @@ class DataBase:
         return self.get_table(table_name)
 
     def get_unique_elements(self, table_name, columns):
-
-        if not self.check_table(table_name):
+        if not self.check_table(table_name) or not columns:
             return {}
 
-        sql_query = f"SELECT * FROM {table_name}"
-        self.cursor.execute(sql_query)
-        table = self.cursor.fetchall()
-
-        column_names = [description[0] for description in self.cursor.description]
-        df = pd.DataFrame(table, columns=column_names)
-        df = df.fillna(" ")
+        # Формируем SQL-запрос, выбирая только уникальные значения нужных колонок
+        queries = [f"SELECT DISTINCT {col} FROM {table_name}" for col in columns]
 
         unique_elements_dict = {}
-
-        for column in columns:
-            if column in df.columns:
-                unique_elements_dict[column] = df[column].unique().tolist()
+        for col, query in zip(columns, queries):
+            try:
+                self.cursor.execute(query)
+                unique_elements_dict[col] = [row[0] for row in self.cursor.fetchall()]
+            except Exception as e:
+                unique_elements_dict[col] = []
+                print(f"Ошибка при обработке колонки {col}: {e}")
 
         return unique_elements_dict
 

@@ -14,6 +14,14 @@ from GraidAis_Back.config import SECRET_KEY, DB_NAME
 from GraidAis_Back.API.merge_uploads import update_db
 from GraidAis_Back.Data_base.DataBase import DataBase
 
+import gzip
+import base64
+
+def compress_json(json_data):
+    compressed_data = gzip.compress(json_data.encode())
+    return base64.b64encode(compressed_data).decode()
+
+
 app = Flask(__name__)
 api = Api(app)
 app.config['SECRET_KEY'] = SECRET_KEY
@@ -86,10 +94,15 @@ class ProtectedResource(Requests):
 
 class GradeTable(Requests):
 
-    def get(self, table_name, number):
+    def get(self, table_name, number=0):
         db = DataBase(self.db_name)
-        table = db.get_table(table_name, number)
-        table = table.to_dict()
+        if number != 0:
+            table = db.get_limit_table(table_name, number)
+            table = table.to_dict()
+            # return compress_json(json.dumps(table, indent=4))
+        else:
+            table = db.get_table(table_name)
+            table = table.to_dict()
         return json.dumps(table, indent = 4)
 
 class GradeColumsName(Requests):
